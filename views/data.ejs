@@ -1,0 +1,486 @@
+<html>
+        <head>
+          <script type="text/javascript" src="lib/jquery.js"></script>
+          <script type="text/javascript">
+            $.ajaxSetup({cache:false});
+            
+            $(document).ready(function(){
+            	var user = '<%=user%>';
+            	if(user=='undefined'){
+            		var dialog=$("#login_form");
+                    if(dialog.is(":hidden")){
+                   	 	dialog.show();
+                    }
+           	        $( "#login_form" ).dialog({title:"请登录",modal:true});
+            	} 
+            });
+            
+            function login(){
+                var form=$("#login_form");
+                if(form.is(":hidden")){
+                    form.show();
+                }else{
+                    form.hide();
+                }
+            }
+            
+            function delete_path(){
+                  var path=$('#delete_form').find("input[name='path']").val();
+                  var lastPartIndex=path.lastIndexOf("/");
+                  var parenPath=path.substring(0,lastPartIndex);
+
+                  if(confirm("将要删除 "+path+"?")){
+                        $.post("/node-zk/delete",$('#delete_form').serialize(),function(rt){
+                            alert(rt);
+                            if(rt=='Delete ok'){
+                               $(parent.document.body).find('#tree').attr('src', "/node-zk/tree?path=/");//+parenPath
+                               window.location.href="/node-zk/get?path=/";//+parenPath;
+                            }
+                        });
+                  }
+             }
+             
+             function add_module(){
+            	 var newModuleName = $("#newModuleName").val();
+            	 if(newModuleName.length == 0){
+            		 openWarning("请输入模块名！","提示");
+            		 return;
+            	 }
+            	 var cartobj = [];
+            	try{
+            		 cartobj = jQuery.parseJSON($("#data").val());
+            	}catch(e){
+            	}
+                var newObj = new Object();	
+                cartobj.push({"name":$("#newModuleName").val(),"details":newObj});
+                                        	
+              	var a= JSON.stringify(cartobj);
+
+  	             $.post("/node-zk/edit",{"path":"<%=path%>","version":"<%=stat.version%>","new_data":a},function(data){
+  	            	 alert(data);
+  	            	 window.location.href="/node-zk/get?path=<%=path%>";
+  	                  
+  	             });                          
+             }
+             
+             function remove_module(){
+            	 var newModuleName = $("#newModuleName").val();
+            	 if(newModuleName.length == 0){
+            		 openWarning("请输入模块名！","提示");
+            		 return;
+            	 }
+            	 var cartobj = [];
+            	try{
+            		 cartobj = jQuery.parseJSON($("#data").val());
+            	}catch(e){
+            	}
+            	for (var i=0;i<cartobj.length;i++)
+              	{
+              		var temp = cartobj[i];
+              		if(temp['name']==newModuleName){
+              			cartobj.splice(i,1)
+              			break;
+              		}
+              	}
+              	var a= JSON.stringify(cartobj);
+
+  	             $.post("/node-zk/edit",{"path":"<%=path%>","version":"<%=stat.version%>","new_data":a},function(data){
+  	            	 alert(data);
+  	            	 window.location.href="/node-zk/get?path=<%=path%>";
+  	                   
+  	             });                          
+             }
+             function add_parameter(moduleName){
+            	 var dialog=$("#dialog");
+                 if(dialog.is(":hidden")){
+                	 dialog.show();
+                 }
+            	 // $( "#dialog-form" ).dialog( "open" );
+            	 $(function() {
+            	       $( "#dialog" ).dialog({ 
+            	          buttons: { "Ok": function() {
+            	        	 
+            	            	 var cartobj = jQuery.parseJSON($("#data").val());
+            	              	for (var i=0;i<cartobj.length;i++)
+            	              	{
+            	              		var temp = cartobj[i];
+            	              		if(temp['name']==moduleName){
+            	              			var details = temp['details'];
+            	              			var paramKey = $('#paramKey').val();
+            	              			var paramVal = $('#paramVal').val();
+            	              			
+            	              			if(paramKey.length == 0||paramVal.length == 0){
+            	              				openWarning("参数名和参数值不能为空！","提示");
+            	              				return;
+            	              			}
+            	              			
+            	              			details[paramKey]=paramVal;
+            	              			break;
+            	              		}
+            	              	}
+            	              	var a= JSON.stringify(cartobj);
+            	  	             $.post("/node-zk/edit",{"path":"<%=path%>","version":"<%=stat.version%>","new_data":a},function(data){
+            	  	            	  alert(data);
+            	  	            	window.location.href="/node-zk/get?path=<%=path%>";
+            	  	                  
+            	  	             });
+            	  	             $(this).dialog("close"); 
+            	          	  } 
+            	          }  
+            	        });
+            	   });
+            	 return;
+             }
+
+            var editing=false;
+            function edit(){
+               <% if(user) { %>
+               if(!editing){
+                 editing=true;
+                 var value=$("#data").val();
+                 $("#data_container").html("<form id='edit_form'>"+
+                                          "<input type='hidden' name='path' value='<%= path %>'/>"+
+                                          "<input type='hidden' name='version' value='<%= stat.version %>'/>"+
+                                          "<table><tr><td colspan='2'><textarea cols='90' rows='10' name='new_data' id='new_data'>"+value+"</textarea></td></tr>"+
+                                          "<tr><td colspan='2'><input type='submit' class='btn btn-success' value='保存' id='save_data'/></td></tr>"+
+                                          "</table></form>");
+
+                $("#new_data").focus();
+                $("#save_data").click(function(e){
+                      var new_data=$("#new_data").val();
+                      if(new_data!=value){
+                            $.post("/node-zk/edit",$("#edit_form").serialize(),function(data){
+                                 alert(data);
+                                 window.location.href="/node-zk/get?path=<%= path %>";
+                            });
+                      }else{
+                      	var btn = "<a class=\"btn btn-success\" href=\"javascript:edit();\"><i class=\"icon-edit icon-white\"></i>  Edit</a>";
+                            $("#data_container").html("<h3>"+value+"</h3>" + btn);
+                      }
+                      editing=false;
+                      return false;
+                 });
+               }
+             <% } else { %>
+               alert ("Please sign in first.");
+            <% } %>
+            }
+            
+            function modify(name,key,idKey){
+            	var cartobj = jQuery.parseJSON($("#data").val());
+            	for (var i=0;i<cartobj.length;i++)
+            	{
+            		var temp = cartobj[i];
+            		if(temp['name']==name){
+            			var details = temp['details'];
+            			for(var detailKey in details){
+            				if(detailKey==key){
+            					details[detailKey] = $('#'+name+'_'+idKey).val();
+            				}
+            			}
+            		}
+            	}
+            	
+            	var a= JSON.stringify(cartobj);
+	             $.post("/node-zk/edit",{"path":"<%=path%>","version":"<%=stat.version%>","new_data":a},function(data){
+	            	   alert(data);
+	            	 window.location.href="/node-zk/get?path=<%=path%>";
+	                  
+	             });    
+            }
+            
+            function deleteParam(name,key){
+            	var cartobj = jQuery.parseJSON($("#data").val());
+            	for (var i=0;i<cartobj.length;i++)
+            	{
+            		var temp = cartobj[i];
+            		if(temp['name']==name){
+            			var details = temp['details'];
+            			for(var detailKey in details){
+            				if(detailKey==key){
+            					delete details[detailKey];
+            				}
+            			}
+            		}
+            	}
+
+            	
+            	var a= JSON.stringify(cartobj);
+	             $.post("/node-zk/edit",{"path":"<%=path%>","version":"<%=stat.version%>","new_data":a},function(data){
+	            	  alert(data);
+	            	 window.location.href="/node-zk/get?path=<%=path%>";
+	                  
+	             });    
+            }
+            
+            function openWarning(text, title, fn) {   
+                var html =   
+                    '<div class="dialog" id="dialog-message">' +   
+                    ' <p>' +   
+                    //' <span class="ui-icon ui-icon-circle-check" style="float: left; margin: 0 7px 0 0;"></span>' + text +   
+                    ' <span style="float: left; margin: 0 7px 0 0;"></span>' + text +   
+                    ' </p>' +   
+                    '</div>';   
+                      
+                $(html).dialog({  
+                    resizable: false,  
+                    modal: true,  
+                    show: {  
+                        effect: 'fade',  
+                        duration: 300  
+                    },  
+                    open: function ()  
+                    {  
+                        //$(this).load('../test.html');  
+                    },  
+                    title: title || "提示信息",  
+                    buttons: {  
+                        "确定": function(){  
+                            var dlg = $(this).dialog("close");   
+                            fn && fn.call(dlg);   
+                        }  
+                    },  
+                    close:function(event, ui){  
+                        $(this).dialog("destroy");  
+                        $("#dialog-message").remove();  
+                    }  
+                });  
+            }
+            
+          </script>
+	<!-- The styles -->
+	<link id="bs-css" href="css/bootstrap-cerulean.css" rel="stylesheet">
+	<style type="text/css">
+	  body {
+		padding-bottom: 40px;
+	  }
+	  .sidebar-nav {
+		padding: 9px 0;
+	  }
+	  .wclass{
+		  width:100%;
+	  }
+	</style>
+	<link href="css/bootstrap-responsive.css" rel="stylesheet">
+	<link href="css/charisma-app.css" rel="stylesheet">
+	<link href="css/jquery-ui-1.8.21.custom.css" rel="stylesheet">
+	<!--<link href='css/fullcalendar.css' rel='stylesheet'>-->
+	<!--<link href='css/fullcalendar.print.css' rel='stylesheet'  media='print'>-->
+	<link href='css/chosen.css' rel='stylesheet'>
+	<link href='css/uniform.default.css' rel='stylesheet'>
+	<link href='css/colorbox.css' rel='stylesheet'>
+	<link href='css/jquery.cleditor.css' rel='stylesheet'>
+	<link href='css/jquery.noty.css' rel='stylesheet'>
+	<link href='css/noty_theme_default.css' rel='stylesheet'>
+	<link href='css/elfinder.min.css' rel='stylesheet'>
+	<link href='css/elfinder.theme.css' rel='stylesheet'>
+	<!--<link href='css/jquery.iphone.toggle.css' rel='stylesheet'>-->
+	<link href='css/opa-icons.css' rel='stylesheet'>
+	<link href='css/uploadify.css' rel='stylesheet'>
+
+	<!-- The HTML5 shim, for IE6-8 support of HTML5 elements -->
+	<!--[if lt IE 9]>
+	  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- The fav icon -->
+	<link rel="shortcut icon" href="img/favicon.ico">
+		
+        <head>
+        <body>
+          </br>
+		  <div class= "container" style="width:95%">
+                <div id='login'>
+                  <% if(user) { %>
+                    <h3>欢迎你,<%= user %> </h3>
+                  <% } %>
+                </div>
+                 
+                  <label>节点路径:</label> <h4><%= path %> &nbsp;&nbsp; 
+                  <% if(user){ %>
+                  <a href='#' onclick="delete_path();">删除应用</a>
+                  <form id='delete_form' onsubmit="return;">
+                    <input type='hidden' name='path' value='<%= path %>'/>
+                    <input type='hidden' name='version' value='<%= stat.version %>'/>
+                  </form>
+                  
+                  模块名：<input class="input-medium" id="newModuleName" value="" type="text">&nbsp;&nbsp;&nbsp;
+                  <a href='#' onclick="add_module();">创建模块</a>&nbsp;&nbsp;
+                  <a href='#' onclick="remove_module();">删除模块</a>
+                  
+                <% } %>
+				  </h4>
+				<!--  
+				<label>Stat:</label>
+                <table class= "table table-striped table-bordered bootstrap-datatable datatable dataTable">
+                   <tr>
+                     <td>name</td>
+                     <td>value</td>
+                   </tr>
+                   <% for(var p in stat){ %>
+                   <tr>
+                     <td><%= p %></td>
+                     <td><%= stat[p] %> </td>
+                   </tr>
+                   <%} %>
+                </table>
+                -->
+                <input type="hidden" id="data" value=<%=data%>>
+	                <% 
+	                console.log("data:"+data);
+	                var result = [];
+	                try{
+	                	result = JSON.parse(data);
+	                }catch(e){
+	                	 console.log("e:"+e);
+	                }
+	               // var result = JSON.parse(data);
+	                console.log("result:"+result);
+	                result.forEach(function(singleData){ 
+	                	name = singleData.name;
+	                	detail = singleData.details;
+	                %>
+			                <div class="row-fluid sortable">		
+							<div class="box span12">
+								<div class="box-header well" data-original-title>
+									<h2><i class="icon-user"></i>模块-<%=name%></h2>
+									&nbsp;&nbsp;
+									<a href="javascript:add_parameter('<%=name%>');"><i class="icon-plus"></i></a>
+									
+								</div>
+								<div class="box-content">
+									<table class="table table-striped">
+									  <thead>
+										  <tr>
+											  <th width="30%">参数名</th>
+											  <th width="20%">参数值</th>
+											  <th>操作</th>
+										  </tr>
+									  </thead>   
+									  <tbody>
+						                <%
+						                	for(var key in detail){
+						                	   var value=detail[key];	
+						                	   idKey = key.replace(/\./g, '_');
+						                %>		           
+											<tr>
+												<td><%=key %></td>
+												<td class="center">
+													<div class="controls">
+													  <input class="input-xlarge focused" id=<%=name%>_<%=idKey %> type="text" value=<%=value %>>
+													</div>
+												</td>
+												<td class="center">
+													<a class="btn btn-info" href="javascript:modify('<%=name%>','<%=key%>','<%=idKey%>')">
+														<i class="icon-edit icon-white"></i>  
+														提交修改                                            
+													</a>									
+													<a class="btn btn-danger"  href="javascript:deleteParam('<%=name%>','<%=key%>')">
+														<i class="icon-trash icon-white"></i> 
+														删除参数
+													</a>
+												</td>
+											</tr>
+									     <%
+						                	}
+									     %>
+									  </tbody>
+								  </table>            
+								</div>
+							</div><!--/span-->
+						</div>
+	                <% }) %>
+
+			</div>
+			
+			<div id="dialog" title="添加参数" style="display:none;">
+				参数名：<input type="text" id="paramKey" /><br/>
+				参数值：<input type="text" id="paramVal" value="" /><br/>
+			</div>
+			
+			<div id='login_form' style='display:none;'>
+             <form method="post" action="/node-zk/login">
+			   <label>用户名</label>
+               <input type="text" name="user[name]" />
+			   <label>密码</label>
+               <input type="password" name="user[password]" /><br/>
+               <input type="submit" class="btn btn-success" value="提交" />
+             </form>
+           </div>
+
+        </body>
+        <!-- external javascript
+    	================================================== -->
+    	<!-- Placed at the end of the document so the pages load faster -->
+
+    	<!-- jQuery -->
+    	<script src="js/jquery-1.7.2.min.js"></script>
+    	<!-- jQuery UI -->
+    	<script src="js/jquery-ui-1.8.21.custom.min.js"></script>
+    	<!-- transition / effect library -->
+    	<script src="js/bootstrap-transition.js"></script>
+    	<!-- alert enhancer library -->
+    	<script src="js/bootstrap-alert.js"></script>
+    	<!-- modal / dialog library -->
+    	<script src="js/bootstrap-modal.js"></script>
+    	<!-- custom dropdown library -->
+    	<script src="js/bootstrap-dropdown.js"></script>
+    	<!-- scrolspy library -->
+    	<script src="js/bootstrap-scrollspy.js"></script>
+    	<!-- library for creating tabs -->
+    	<script src="js/bootstrap-tab.js"></script>
+    	<!-- library for advanced tooltip -->
+    	<script src="js/bootstrap-tooltip.js"></script>
+    	<!-- popover effect library -->
+    	<script src="js/bootstrap-popover.js"></script>
+    	<!-- button enhancer library -->
+    	<script src="js/bootstrap-button.js"></script>
+    	<!-- accordion library (optional, not used in demo) -->
+    	<script src="js/bootstrap-collapse.js"></script>
+    	<!-- carousel slideshow library (optional, not used in demo) -->
+    	<script src="js/bootstrap-carousel.js"></script>
+    	<!-- autocomplete library -->
+    	<script src="js/bootstrap-typeahead.js"></script>
+    	<!-- tour library -->
+    	<script src="js/bootstrap-tour.js"></script>
+    	<!-- library for cookie management -->
+    	<script src="js/jquery.cookie.js"></script>
+    	<!-- calander plugin -->
+    	<!--<script src='js/fullcalendar.min.js'></script>-->
+    	<!-- data table plugin -->
+    	<script src='js/jquery.dataTables.min.js'></script>
+
+    	<!-- chart libraries start -->
+    	<script src="js/excanvas.js"></script>
+    	<script src="js/jquery.flot.min.js"></script>
+    	<script src="js/jquery.flot.pie.min.js"></script>
+    	<script src="js/jquery.flot.stack.js"></script>
+    	<script src="js/jquery.flot.resize.min.js"></script>
+    	<!-- chart libraries end -->
+
+    	<!-- select or dropdown enhancer -->
+    	<script src="js/jquery.chosen.min.js"></script>
+    	<!-- checkbox, radio, and file input styler -->
+    	<script src="js/jquery.uniform.min.js"></script>
+    	<!-- plugin for gallery image view -->
+    	<script src="js/jquery.colorbox.min.js"></script>
+    	<!-- rich text editor library -->
+    	<script src="js/jquery.cleditor.min.js"></script>
+    	<!-- notification plugin -->
+    	<script src="js/jquery.noty.js"></script>
+    	<!-- file manager library -->
+    	<script src="js/jquery.elfinder.min.js"></script>
+    	<!-- star rating plugin -->
+    	<script src="js/jquery.raty.min.js"></script>
+    	<!-- for iOS style toggle switch -->
+    	<!--<script src="js/jquery.iphone.toggle.js"></script>-->
+    	<!-- autogrowing textarea plugin -->
+    	<!--<script src="js/jquery.autogrow-textarea.js"></script>-->
+    	<!-- multiple file upload plugin -->
+    	<!--<script src="js/jquery.uploadify-3.1.min.js"></script>-->
+    	<!-- history.js for cross-browser state change on ajax -->
+    	<script src="js/jquery.history.js"></script>
+    	<!-- application script for Charisma demo -->
+    	<!-- <script src="js/charisma.js"></script>-->
+    	
+</html>

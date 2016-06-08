@@ -1,0 +1,11 @@
+{
+  "name": "node-zk-browser",
+  "version": "0.0.2",
+  "dependencies": {
+    "basic-auth": "^1.0.4",
+    "ejs": ">= 0.7.2",
+    "express": "3.x",
+    "express-namespace": ">=0.1.1",
+    "zookeeper": ">=3.4.8-1"
+  }
+}
